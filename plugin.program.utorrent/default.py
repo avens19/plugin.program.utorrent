@@ -1,5 +1,5 @@
 import urllib, sys, os, re, time
-import xbmcaddon, xbmcplugin, xbmcgui, xbmc
+import xbmcaddon, xbmcplugin, xbmcgui, xbmc, threading
 if sys.version_info < (2, 7):
     import simplejson
 else:
@@ -22,7 +22,9 @@ UT_ADDRESS = __addon__.getSetting('ip')
 UT_PORT = __addon__.getSetting('port')
 UT_USER = __addon__.getSetting('usr')
 UT_PASSWORD = __addon__.getSetting('pwd')
-UT_TDIR = xbmc.translatePath( __addon__.getSetting('tdir') )
+UT_REFRESH = __addon__.getSetting('refresh')
+UT_LIMIT = __addon__.getSetting('limit')
+UT_TDIR = ''
 baseurl = 'http://'+UT_ADDRESS+':'+UT_PORT+'/gui/?token='
 
 from utilities import *
@@ -63,7 +65,16 @@ def updateList():
         xbmc.log( "%s::updateList - %d: %s" % ( __addonname__, len(torrentList), str(torrent) ), xbmc.LOGDEBUG )
         hashnum = torrent[0].encode('utf-8')
         status = torrent[1]
-        torname = torrent[2].encode('utf-8')
+        if UT_LIMIT == "0":
+            torname = torrent[2].encode('utf-8')
+        if UT_LIMIT == "1":
+            torname = torrent[2].encode('utf-8')[:5]
+        if UT_LIMIT == "2":
+            torname = torrent[2].encode('utf-8')[:10]
+        if UT_LIMIT == "3":
+            torname = torrent[2].encode('utf-8')[:15]
+        if UT_LIMIT == "4":
+            torname = torrent[2].encode('utf-8')[:20]
         sid = torrent[22]
         complete = torrent[4] / 10.0
         size = torrent[3] / (1024*1024)
@@ -100,11 +111,12 @@ def listTorrents():
             thumb = os.path.join(__icondir__,'unknown.png')
         url = baseurl
         addDir(name+" [COLOR FFFF0000]"
-                +__language__(30001).encode('utf8')+"[/COLOR]"+str(complete)+"% [COLOR FF00FF00]"
-                +__language__(30002).encode('utf8')+"[/COLOR]"+size_str+" [COLOR FFFFFF00]"
-                +__language__(30003).encode('utf8')+"[/COLOR]"+str(down_rate)+"Kb/s [COLOR FF00FFFF]"
-                +__language__(30004).encode('utf8')+"[/COLOR]"+str(up_rate)+"Kb/s [COLOR FFFF00FF]"
-                +__language__(30005).encode('utf8')+"[/COLOR]"+remain_str,url,mode,thumb,hashnum,sid)
+                +__language__(30001).encode('utf8')+"[/COLOR]"+str(complete)+"% [COLOR FFFFFF00]"
+                +__language__(30003).encode('utf8')+"[/COLOR]"+str(down_rate)+"Kb/s [COLOR FFFF00FF]"
+                +__language__(30005).encode('utf8')+"[/COLOR]"+remain_str+ " [COLOR FF00FFFF]"
+                +__language__(30004).encode('utf8')+"[/COLOR]"+str(up_rate)+"Kb/s [COLOR FF00FF00]"
+                +__language__(30002).encode('utf8')+"[/COLOR]"+size_str,url,mode,thumb,hashnum,sid)
+                
         mode = mode + 1
     xbmcplugin.endOfDirectory(int(sys.argv[1]),cacheToDisc=False)
 
@@ -248,6 +260,9 @@ def addDir(name,url,mode,iconimage,hashNum,sid):
     point.addContextMenuItems([(__language__(32011), rp % (sys.argv[0], 1000)),(__language__(32012), rp % (sys.argv[0], 1001)),(__language__(32013), rp % (sys.argv[0], 1002)),(__language__(32014), rp % (sys.argv[0], 1003)),(__language__(32015), rp % (sys.argv[0], 1004)),(__language__(32016), rp % (sys.argv[0], 1005))],replaceItems=True)
     ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=point,isFolder=False)
 
+def refresh():
+    xbmc.executebuiltin('Container.Refresh')
+
 params = get_params()
 url = None
 name = None
@@ -300,3 +315,12 @@ elif mode == 1005:
 elif 0 < mode < 1000:
     xbmc.log( "%s::main - hashNum: %s" % ( __addonname__, hashNum ), xbmc.LOGDEBUG )
     performAction(hashNum,sid)
+
+if UT_REFRESH == "1":
+    threading.Timer(5.0, refresh).start()
+if UT_REFRESH == "2":
+    threading.Timer(10.0, refresh).start()
+if UT_REFRESH == "3":
+    threading.Timer(30.0, refresh).start()
+if UT_REFRESH == "4":
+    threading.Timer(60.0, refresh).start()
